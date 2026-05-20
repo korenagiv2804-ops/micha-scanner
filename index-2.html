@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Micha MA150 Scanner</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #09090f;
+      color: #e8e8f0;
+      font-family: 'IBM Plex Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    select, button { font-family: inherit; font-size: inherit; }
+    .hidden { display: none !important; }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid #1e1e30;
+      background: linear-gradient(180deg, #0d0d1a 0%, #09090f 100%);
+      display: flex; justify-content: space-between; align-items: flex-end;
+      flex-wrap: wrap; gap: 12px;
+    }
+    header .eyebrow { font-size: 10px; letter-spacing: 4px; color: #0ff294; margin-bottom: 5px; text-transform: uppercase; }
+    header h1 { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -.5px; }
+    header .sub { color: #444; font-size: 11px; margin-top: 3px; }
+    .warn-box {
+      font-size: 10px; color: #f5a623;
+      border: 1px solid rgba(245,166,35,.2); border-radius: 4px;
+      padding: 7px 12px; max-width: 300px; line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; min-height: 0; }
+
+    /* ── Sidebar ── */
+    aside {
+      width: 240px; min-width: 240px;
+      border-right: 1px solid #1e1e30;
+      padding: 16px; display: flex; flex-direction: column; gap: 14px;
+      overflow-y: auto;
+    }
+    .sec-title { font-size: 10px; letter-spacing: 3px; color: #555; text-transform: uppercase; margin-bottom: 7px; }
+
+    #sector-buttons { display: flex; flex-direction: column; gap: 3px; }
+    .sector-btn {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 9px; border-radius: 4px; cursor: pointer;
+      border: 1px solid #1a1a28; background: transparent; color: #444;
+      width: 100%; text-align: left; transition: all .15s;
+    }
+    .sector-btn.on { border-color: rgba(15,242,148,.4); background: rgba(15,242,148,.05); color: #e8e8f0; }
+    .sector-btn .cnt { font-size: 10px; color: #555; }
+
+    .filter-row { display: flex; gap: 4px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 5px 11px; border: 1px solid #1e1e30;
+      background: transparent; color: #444; border-radius: 4px; cursor: pointer; transition: all .15s;
+    }
+    .filter-btn.on { border-color: #0ff294; background: rgba(15,242,148,.1); color: #e8e8f0; }
+
+    select {
+      width: 100%; background: #0d0d1a; border: 1px solid #1e1e30;
+      color: #e8e8f0; border-radius: 4px; padding: 7px 9px;
+    }
+
+    .scan-btn {
+      padding: 11px; border-radius: 6px; cursor: pointer; width: 100%;
+      border: 1px solid #0ff294; background: rgba(15,242,148,.1); color: #0ff294;
+      font-weight: 700; letter-spacing: 1px; text-transform: uppercase; transition: all .2s;
+    }
+    .scan-btn.stop { border-color: #ff4757; background: rgba(255,71,87,.1); color: #ff4757; }
+
+    .rules { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+    .rules li { font-size: 11px; line-height: 1.8; color: #2a2a50; }
+    .rules .bad { color: rgba(255,71,87,.45); }
+
+    /* ── Main ── */
+    main { flex: 1; padding: 18px 22px; overflow-y: auto; }
+
+    .prog-wrap { margin-bottom: 18px; }
+    .prog-head { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+    .prog-track { height: 2px; background: #1a1a28; border-radius: 1px; }
+    .prog-fill { height: 100%; width: 0%; border-radius: 1px; background: linear-gradient(90deg,#0ff294,#00c9ff); transition: width .3s; }
+    .prog-msg { margin-top: 5px; font-size: 11px; color: #333; }
+
+    .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .stat-card { background: #0d0d1a; border: 1px solid #1e1e30; border-radius: 6px; padding: 10px 14px; min-width: 95px; }
+    .stat-num { font-size: 20px; font-weight: 700; }
+    .stat-lbl { font-size: 10px; color: #444; margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .err-box {
+      padding: 12px 14px; border-radius: 6px; margin-bottom: 14px;
+      background: rgba(255,71,87,.05); border: 1px solid rgba(255,71,87,.25);
+      color: #ff4757; font-size: 12px; line-height: 1.6;
+    }
+
+    .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 280px; color: #2a2a40; gap: 10px; text-align: center; }
+    .empty-icon { font-size: 44px; }
+    .empty small { font-size: 11px; color: #1e1e30; }
+
+    /* ── Cards ── */
+    .card {
+      background: #0d0d1a; border: 1px solid #1a1a28;
+      border-left: 3px solid #0ff294; border-radius: 6px;
+      padding: 13px 16px; margin-bottom: 8px;
+    }
+    .card.bounce { border-left-color: #f5a623; }
+
+    .q-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 6px; padding-bottom: 8px; margin-bottom: 10px;
+      border-bottom: 1px solid #141420;
+    }
+    .q-pill {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
+      color: #0ff294; background: rgba(15,242,148,.1); border: 1px solid rgba(15,242,148,.35);
+    }
+    .q-meta { font-size: 10px; color: #333; }
+
+    .card-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+    .ticker-name { font-size: 17px; font-weight: 700; color: #fff; }
+    .company-name { font-size: 10px; color: #333; margin-top: 2px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .price-val { font-size: 15px; font-weight: 600; }
+    .price-lbl { font-size: 10px; color: #444; margin-top: 2px; }
+    .ma-line { font-size: 11px; color: #555; margin-bottom: 2px; }
+    .card-meta { font-size: 10px; color: #444; margin-top: 4px; }
+    .setup-badge { display: inline-block; padding: 3px 9px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+    .setup-badge.breakout { background: rgba(15,242,148,.1); border: 1px solid #0ff294; color: #0ff294; }
+    .setup-badge.bounce   { background: rgba(245,166,35,.1);  border: 1px solid #f5a623; color: #f5a623; }
+    .rs-block { font-size: 11px; color: #555; }
+    .rs-value { font-size: 14px; font-weight: 700; }
+    .trend-badge { font-size: 10px; padding: 3px 8px; border-radius: 3px; letter-spacing: .5px; margin-left: auto; white-space: nowrap; }
+    .card-expl { margin-top: 9px; padding-top: 9px; border-top: 1px solid #141420; font-size: 11px; color: #3a3a5a; line-height: 1.6; }
+
+    /* ── Chart toggle button on card ── */
+    .chart-toggle-btn {
+      margin-top: 10px;
+      padding: 5px 14px;
+      border: 1px solid #1e1e30;
+      background: transparent;
+      color: #444;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      width: 100%;
+      text-align: left;
+      transition: all .2s;
+    }
+    .chart-toggle-btn:hover {
+      border-color: #2a2a50;
+      color: #888;
+    }
+    .chart-toggle-btn.open {
+      border-color: rgba(15,242,148,.3);
+      color: #0ff294;
+      background: rgba(15,242,148,.04);
+    }
+
+    /* ── Inline chart container ── */
+    .chart-container {
+      display: none;
+      margin-top: 10px;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #1a1a28;
+    }
+    .chart-container.open { display: block; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid #1a1a28; padding: 9px 28px;
+      font-size: 10px; color: #2a2a40;
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
+    }
+
+    /* ── Sidebar toggle button (mobile only) ── */
+    #sidebar-toggle {
+      display: none;
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-bottom: 1px solid #1e1e30;
+      background: #0d0d1a;
+      color: #e8e8f0;
+      font-family: inherit;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+      letter-spacing: .5px;
+    }
+    #sidebar-toggle .toggle-arrow { float: right; transition: transform .25s; }
+    #sidebar-toggle .toggle-arrow.open { transform: rotate(180deg); }
+
+    /* ── Mobile ── */
+    @media (max-width: 680px) {
+      header { padding: 14px 16px 12px; }
+      header h1 { font-size: 17px; }
+      .warn-box { display: none; }
+      #regime-bar { padding: 7px 16px; flex-direction: column; align-items: flex-start; gap: 6px; }
+      .regime-stats { flex-wrap: wrap; gap: 10px; }
+      #market-banner { padding: 6px 16px; flex-direction: column; align-items: flex-start; gap: 4px; }
+      .layout { flex-direction: column; }
+      #sidebar-toggle { display: block; }
+      aside {
+        width: 100%; min-width: unset;
+        border-right: none; border-bottom: 1px solid #1e1e30;
+        padding: 0; gap: 0; overflow: hidden;
+        max-height: 0; transition: max-height .3s ease;
+      }
+      aside.mobile-open { max-height: 1200px; padding: 14px 16px; gap: 14px; }
+      main { padding: 0; }
+      .tab-bar { padding: 10px 14px 0; }
+      #tab-scanner, #tab-watchlist { padding: 12px 14px; }
+      .stats { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+      .stat-card { min-width: 80px; flex-shrink: 0; padding: 8px 10px; }
+      .stat-num { font-size: 17px; }
+      .card { padding: 11px 13px; }
+      .card-row { flex-direction: column; gap: 0; }
+      .card-header-mobile {
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 10px;
+        cursor: pointer; padding: 2px 0 10px;
+      }
+      .card-header-mobile .left { display: flex; align-items: center; gap: 10px; }
+      .card-expand-arrow { font-size: 12px; color: #444; transition: transform .2s; flex-shrink: 0; }
+      .card-expand-arrow.open { transform: rotate(180deg); }
+      .card-details { overflow: hidden; max-height: 0; transition: max-height .3s ease; }
+      .card-details.open { max-height: 1600px; }
+      .card-details .card-row { flex-direction: row; flex-wrap: wrap; gap: 12px; padding-top: 10px; border-top: 1px solid #141420; }
+      .trend-badge { margin-left: 0; font-size: 9px; padding: 2px 6px; }
+      .chart-toggle-btn { font-size: 10px; padding: 5px 10px; }
+    }
+
+    /* ── Desktop: accordion wrappers are transparent ── */
+    @media (min-width: 681px) {
+      .card-header-mobile { cursor: default; padding-bottom: 0; }
+      .card-expand-arrow  { display: none; }
+      .card-details       { max-height: none !important; overflow: visible; }
+      .card-details .card-row { padding-top: 0; border-top: none; }
+    }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+      padding: 12px 22px 0;
+      border-bottom: 1px solid #1a1a28;
+      background: #09090f;
+    }
+    .tab-btn {
+      padding: 7px 18px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      background: transparent;
+      color: #444;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      font-size: 12px;
+      letter-spacing: .5px;
+      transition: all .15s;
+      position: relative;
+      bottom: -1px;
+    }
+    .tab-btn.active {
+      border-color: #1a1a28;
+      border-bottom-color: #09090f;
+      background: #09090f;
+      color: #e8e8f0;
+    }
+    .tab-btn .tab-badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+      background: rgba(15,242,148,.15);
+      color: #0ff294;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Watchlist ── */
+    .wl-empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 260px; color: #2a2a40; gap: 10px; text-align: center;
+    }
+    .wl-empty-icon { font-size: 40px; }
+    .add-wl-btn {
+      margin-top: 8px;
+      padding: 5px 12px;
+      border: 1px solid #1e1e30;
+      background: transparent;
+      color: #444;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .add-wl-btn:hover, .add-wl-btn.saved {
+      border-color: #0ff294;
+      background: rgba(15,242,148,.08);
+      color: #0ff294;
+    }
+    .remove-wl-btn {
+      padding: 4px 10px;
+      border: 1px solid rgba(255,71,87,.3);
+      background: transparent;
+      color: #ff475799;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      transition: all .2s;
+    }
+    .remove-wl-btn:hover {
+      border-color: #ff4757;
+      color: #ff4757;
+      background: rgba(255,71,87,.07);
+    }
+    .wl-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .wl-clear-btn {
+      padding: 5px 12px;
+      border: 1px solid rgba(255,71,87,.25);
+      background: transparent;
+      color: #ff475788;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all .2s;
+    }
+    .wl-clear-btn:hover { border-color: #ff4757; color: #ff4757; }
+
+    /* ── Market Regime Bar ── */
+    #regime-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 8px 28px;
+      font-size: 11px;
+      border-bottom: 1px solid #1a1a28;
+      background: #0a0a12;
+      min-height: 36px;
+    }
+    .regime-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: #333;
+      text-transform: uppercase;
+      margin-right: 10px;
+    }
+    .regime-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      border: 1px solid;
+    }
+    .regime-pill.bull   { color:#0ff294; background:rgba(15,242,148,.08);  border-color:rgba(15,242,148,.3);  }
+    .regime-pill.caution{ color:#f5a623; background:rgba(245,166,35,.08); border-color:rgba(245,166,35,.3);  }
+    .regime-pill.bear   { color:#ff4757; background:rgba(255,71,87,.08);  border-color:rgba(255,71,87,.3);   }
+    .regime-pill.loading{ color:#333;    background:transparent;           border-color:#1e1e30;              }
+    .regime-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+    .regime-dot.bull    { background:#0ff294; animation: pulse 2s infinite; }
+    .regime-dot.caution { background:#f5a623; }
+    .regime-dot.bear    { background:#ff4757; }
+    .regime-dot.loading { background:#333; }
+    .regime-stats {
+      display: flex;
+      gap: 18px;
+      font-size: 10px;
+      color: #444;
+    }
+    .regime-stat span { color: #666; }
+    .demo-btn {
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      border: 1px solid #333;
+      background: transparent;
+      color: #444;
+      font-size: 11px;
+      letter-spacing: .5px;
+      transition: all .2s;
+    }
+    .demo-btn.on {
+      border-color: rgba(161,100,255,.5);
+      background: rgba(161,100,255,.08);
+      color: #a164ff;
+    }
+    #demo-banner {
+      display: none;
+      padding: 6px 28px;
+      font-size: 10px;
+      background: rgba(161,100,255,.07);
+      border-bottom: 1px solid rgba(161,100,255,.2);
+      color: #a164ff;
+      letter-spacing: .5px;
+    }
+    #demo-banner.visible { display: block; }
+    #market-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 9px 28px;
+      font-size: 11px;
+      border-bottom: 1px solid transparent;
+    }
+    #market-banner.closed {
+      background: rgba(245,166,35,.07);
+      border-color: rgba(245,166,35,.2);
+      color: #f5a623;
+    }
+    #market-banner.open {
+      background: rgba(15,242,148,.05);
+      border-color: rgba(15,242,148,.15);
+      color: #0ff294;
+    }
+    #market-banner.pre {
+      background: rgba(100,149,237,.07);
+      border-color: rgba(100,149,237,.2);
+      color: #6495ed;
+    }
+    .mkt-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .mkt-dot.closed { background: #f5a623; }
+    .mkt-dot.open   { background: #0ff294; animation: pulse 2s infinite; }
+    .mkt-dot.pre    { background: #6495ed; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .4; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <p class="eyebrow">◈ Quantitative Signal Engine</p>
+    <h1>Micha MA150 Scanner</h1>
+    <p class="sub">S&P 500 · Long Setups Only · Live Quotes via Finnhub</p>
+  </div>
+  <div class="warn-box">⚠ Screening tool only — not financial advice. All signals require independent verification before any trading decision.</div>
+</header>
+
+<!-- Market Regime Bar — SPY trend status -->
+<div id="regime-bar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="regime-label">Market Regime</span>
+    <span class="regime-pill loading" id="regime-pill">
+      <span class="regime-dot loading" id="regime-dot"></span>
+      <span id="regime-text">Loading SPY…</span>
+    </span>
+  </div>
+  <div class="regime-stats" id="regime-stats"></div>
+</div>
+
+<!-- Market Hours Banner -->
+<div id="market-banner"></div>
+<!-- Demo Mode Banner -->
+<div id="demo-banner">⚠ DEMO MODE — Using last candle close as price. Data is real but not a live quote. Do not use for trading decisions.</div>
+
+<div class="layout">
+
+  <!-- Mobile sidebar toggle -->
+  <button id="sidebar-toggle">
+    ☰ Filters &amp; Sectors
+    <span class="toggle-arrow" id="sidebar-arrow">▼</span>
+  </button>
+
+  <aside id="sidebar">
+    <div>
+      <div class="sec-title">Sectors</div>
+      <div id="sector-buttons"></div>
+      <p id="ticker-count" style="font-size:11px;color:#444;margin-top:7px">0 tickers selected</p>
+    </div>
+
+    <div>
+      <div class="sec-title">Filter Setup</div>
+      <div class="filter-row">
+        <button class="filter-btn on" data-filter="All">All</button>
+        <button class="filter-btn" data-filter="Breakout">Breakout</button>
+        <button class="filter-btn" data-filter="Bounce">Bounce</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">Sort By</div>
+      <select id="sort-select">
+        <option value="rs">Relative Strength</option>
+        <option value="price">Price</option>
+        <option value="range">Tightest Range</option>
+      </select>
+    </div>
+
+    <button id="scan-btn" class="scan-btn">▶ Run Scan</button>
+
+    <button id="demo-btn" class="demo-btn">◎ Demo Mode: Off</button>
+
+    <div style="border-top:1px solid #1a1a28;padding-top:14px">
+      <div class="sec-title">Scan Criteria</div>
+      <ul class="rules">
+        <li>✓ Live quote required — no confirmed price, no result</li>
+        <li>✓ Price above SMA150 or SMA200</li>
+        <li>✓ SMA150 slope trending upward</li>
+        <li>✓ Breakout: consolidation range under 8%, close above 20-day high</li>
+        <li>✓ Bounce: price tested SMA150 within last 5 sessions</li>
+        <li>✓ Volume at least 1.2× the 20-session average</li>
+        <li class="bad">✗ Price below both SMA150 and SMA200 — setup invalidated</li>
+      </ul>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="scanner">Scanner</button>
+      <button class="tab-btn" data-tab="watchlist">
+        Watchlist <span class="tab-badge" id="wl-count">0</span>
+      </button>
+    </div>
+
+    <!-- ── SCANNER TAB ── -->
+    <div id="tab-scanner" class="tab-panel active" style="padding:18px 22px">
+
+      <div id="prog-wrap" class="prog-wrap hidden">
+        <div class="prog-head">
+          <span id="prog-label" style="color:#0ff294">Scanning…</span>
+          <span id="prog-pct" style="color:#555">0%</span>
+        </div>
+        <div class="prog-track"><div id="prog-fill" class="prog-fill"></div></div>
+        <p id="prog-msg" class="prog-msg"></p>
+      </div>
+
+      <div id="stats-row" class="stats hidden">
+        <div class="stat-card"><div id="s-total"     class="stat-num" style="color:#0ff294">0</div><div class="stat-lbl">Qualified</div></div>
+        <div class="stat-card"><div id="s-breakout"  class="stat-num" style="color:#0ff294">0</div><div class="stat-lbl">Breakouts</div></div>
+        <div class="stat-card"><div id="s-bounce"    class="stat-num" style="color:#f5a623">0</div><div class="stat-lbl">Bounces</div></div>
+        <div class="stat-card"><div id="s-live"      class="stat-num" style="color:#0ff294">0</div><div class="stat-lbl">Live Quotes</div></div>
+        <div class="stat-card"><div id="s-dropped"   class="stat-num" style="color:#ff4757">0</div><div class="stat-lbl">Excluded</div></div>
+        <div class="stat-card"><div id="s-ratelimit" class="stat-num" style="color:#888">0</div><div class="stat-lbl">Rate Limit Retries</div></div>
+      </div>
+
+      <div id="err-box" class="err-box hidden"></div>
+
+      <div id="empty" class="empty">
+        <div class="empty-icon">◈</div>
+        <p>Ready to Scan</p>
+        <small>Select one or more sectors and click Run Scan. Results appear as each batch completes.</small>
+      </div>
+
+      <div id="results"></div>
+    </div>
+
+    <!-- ── WATCHLIST TAB ── -->
+    <div id="tab-watchlist" class="tab-panel" style="padding:18px 22px">
+      <div id="wl-empty" class="wl-empty">
+        <div class="wl-empty-icon">☆</div>
+        <p style="color:#2a2a40">Your watchlist is empty</p>
+        <small style="color:#1e1e30">Click "Add to Watchlist" on any scanner result to save it here.<br>Watchlist is stored in your browser and persists across sessions.</small>
+      </div>
+      <div id="wl-content" class="hidden">
+        <div class="wl-toolbar">
+          <span style="font-size:11px;color:#444">Saved signals — stored locally in this browser</span>
+          <button class="wl-clear-btn" id="wl-clear-btn">✕ Clear All</button>
+        </div>
+        <div id="wl-list"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <span>Micha MA150 Scanner · S&P 500 · Quotes provided by Finnhub</span>
+  <span>For research and educational use only. Not financial advice. Past performance does not indicate future results.</span>
+</footer>
+
+<script>
+"use strict";
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// Uses corsproxy.io — a free, reliable CORS proxy that needs zero setup.
+// Works from file:// on any phone or computer. No server needed.
+const FINNHUB_KEY  = "d84kctpr01qutij97ls0d84kctpr01qutij97lsg";
+const FINNHUB_REAL = "https://finnhub.io/api/v1";
+const CORS_PROXY   = "https://corsproxy.io/?";
+const TIMEOUT_MS   = 12000;
+const MAX_AGE_MS   = 15 * 60 * 1000;
+const BATCH_SIZE   = 2;
+
+function buildFinnhubUrl(endpoint, params = {}) {
+  const q = new URLSearchParams(params);
+  q.set("token", FINNHUB_KEY);
+  const finnhubUrl = `${FINNHUB_REAL}${endpoint}?${q.toString()}`;
+  return `${CORS_PROXY}${encodeURIComponent(finnhubUrl)}`;
+}
+
+// ─── SECTORS ──────────────────────────────────────────────────────────────────
+const SECTORS = {
+  "Technology":       ["AAPL","MSFT","NVDA","META","GOOGL","AMZN","AVGO","AMD","ORCL","ADBE","CRM","INTC","QCOM","TXN","NOW","INTU","PANW","AMAT","MU","LRCX"],
+  "Healthcare":       ["UNH","LLY","JNJ","ABBV","MRK","TMO","ABT","DHR","BMY","AMGN","GILD","MDT","ISRG","SYK","CVS","CI","HUM","ELV","ZTS","REGN"],
+  "Financials":       ["JPM","BAC","WFC","GS","MS","BLK","C","AXP","CB","MMC","SPGI","ICE","CME","PGR","TRV","AFL","MET","AIG","PRU","BRK.B"],
+  "Consumer Disc.":   ["TSLA","HD","MCD","NKE","SBUX","LOW","TJX","BKNG","ABNB","CMG","YUM","ORLY","AZO","ROST","DHI","LEN","PHM","F","GM","MAR"],
+  "Industrials":      ["CAT","RTX","HON","UPS","BA","GE","LMT","ETN","DE","EMR","PH","ITW","GD","NOC","CSX","NSC","UNP","FDX","WM","RSG"],
+  "Energy":           ["XOM","CVX","COP","EOG","SLB","MPC","VLO","PSX","OXY","HAL","DVN","HES","BKR"],
+  "Consumer Staples": ["PG","KO","PEP","COST","WMT","PM","MO","CL","MDLZ","GIS","K","CAG","HRL","TSN"],
+  "Utilities":        ["NEE","SO","DUK","AEP","EXC","SRE","D","PCG","ED","XEL"],
+  "Materials":        ["LIN","APD","SHW","ECL","NEM","FCX","NUE","VMC","MLM","ALB"],
+  "Real Estate":      ["PLD","AMT","EQIX","PSA","O","SPG","DLR","AVB","EQR","WY"],
+  "Communication":    ["NFLX","DIS","CMCSA","T","VZ","TMUS","EA","TTWO"],
+};
+
+const NAMES = {
+  AAPL:"Apple Inc.",MSFT:"Microsoft Corp.",NVDA:"NVIDIA Corp.",META:"Meta Platforms",
+  GOOGL:"Alphabet Inc.",AMZN:"Amazon.com",AVGO:"Broadcom Inc.",AMD:"Advanced Micro Devices",
+  ORCL:"Oracle Corp.",ADBE:"Adobe Inc.",CRM:"Salesforce",TSLA:"Tesla Inc.",
+  UNH:"UnitedHealth",LLY:"Eli Lilly",JPM:"JPMorgan Chase",BAC:"Bank of America",
+  XOM:"Exxon Mobil",CVX:"Chevron",PG:"Procter & Gamble",KO:"Coca-Cola",
+  HD:"Home Depot",MCD:"McDonald's",NFLX:"Netflix",JNJ:"Johnson & Johnson",
+  WFC:"Wells Fargo",GS:"Goldman Sachs",MS:"Morgan Stanley",INTC:"Intel",
+  AMGN:"Amgen",GILD:"Gilead",MDT:"Medtronic",ISRG:"Intuitive Surgical",
+  COST:"Costco",WMT:"Walmart",SBUX:"Starbucks",NKE:"Nike",
+};
+
+// ─── RATE LIMIT + RETRY ENGINE ───────────────────────────────────────────────
+// All Finnhub calls go through fetchWithRetry.
+// On 429: waits the Retry-After header (or exponential backoff) then retries.
+// On timeout or network error: retries up to MAX_RETRIES times.
+// Shows a live status line in the progress area while waiting.
+
+const MAX_RETRIES     = 3;
+const BASE_BACKOFF_MS = 2000;   // first retry wait: 2 s
+const MAX_BACKOFF_MS  = 30000;  // cap at 30 s
+
+// Global 429 counter shown in UI
+let rateLimitHits = 0;
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function setRateLimitStatus(msg) {
+  // Reuse the progress message line to show retry status
+  const el = document.getElementById("prog-msg");
+  if (el) el.textContent = msg;
+}
+
+// Single fetch with AbortController timeout
+async function fetchWithTimeout(url) {
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+// Fetch with retry logic — handles 429, timeouts, network errors
+async function fetchWithRetry(url, label) {
+  let attempt = 0;
+
+  while (attempt <= MAX_RETRIES) {
+    let res;
+    try {
+      res = await fetchWithTimeout(url);
+    } catch (e) {
+      // Network error or timeout
+      attempt++;
+      if (attempt > MAX_RETRIES) throw e;
+      const wait = Math.min(BASE_BACKOFF_MS * attempt, MAX_BACKOFF_MS);
+      setRateLimitStatus(`⚠ ${label} — ${e.name === "AbortError" ? "timeout" : "network error"} · retry ${attempt}/${MAX_RETRIES} in ${wait/1000}s…`);
+      await sleep(wait);
+      continue;
+    }
+
+    // 429 Too Many Requests — respect Retry-After header or use backoff
+    if (res.status === 429) {
+      rateLimitHits++;
+      attempt++;
+      const retryAfter = parseInt(res.headers.get("Retry-After") || "0", 10);
+      const wait = retryAfter > 0
+        ? retryAfter * 1000
+        : Math.min(BASE_BACKOFF_MS * Math.pow(2, attempt - 1), MAX_BACKOFF_MS);
+      setRateLimitStatus(`⏸ Rate limit hit (${rateLimitHits}×) · waiting ${Math.round(wait/1000)}s before retry ${attempt}/${MAX_RETRIES}…`);
+      await sleep(wait);
+      continue;
+    }
+
+    // Any other HTTP error — return immediately, don't retry
+    if (!res.ok) return res;
+
+    // Success
+    if (attempt > 0) setRateLimitStatus(""); // clear retry message
+    return res;
+  }
+
+  // Exhausted all retries — return a fake 429 response object
+  return { ok: false, status: 429, headers: { get: () => null },
+           json: async () => null, text: async () => "Max retries exceeded" };
+}
+
+// ─── QUOTE SERVICE ────────────────────────────────────────────────────────────
+function mkUnavailable(ticker, reason) {
+  return { ticker, price:null, bid:null, ask:null,
+           timestamp:null, source:"finnhub", status:"unavailable", error:reason };
+}
+
+async function fetchLiveQuote(ticker) {
+  const url = buildFinnhubUrl("/quote", { symbol: ticker });
+  let raw;
+  try {
+    const res = await fetchWithRetry(url, `quote:${ticker}`);
+    if (!res.ok) return mkUnavailable(ticker, `HTTP ${res.status}`);
+    raw = await res.json();
+  } catch (e) {
+    return mkUnavailable(ticker, e.name === "AbortError" ? "timeout" : "network error");
+  }
+
+  // Finnhub fields:
+  //   c  = current price (0 when market closed)
+  //   pc = previous close (always non-zero)
+  //   b  = bid, a = ask, t = timestamp
+  const livePrice  = raw?.c;
+  const prevClose  = raw?.pc;
+  const bid        = raw?.b ?? null;
+  const ask        = raw?.a ?? null;
+  const unixSec    = raw?.t;
+
+  // Use live price if market is open, fall back to previous close if market is closed
+  const price      = (livePrice && livePrice > 0) ? livePrice : (prevClose && prevClose > 0) ? prevClose : null;
+  const isLive     = livePrice && livePrice > 0;
+
+  if (!price) return mkUnavailable(ticker, "no price data from Finnhub");
+
+  const tsMs  = unixSec ? unixSec * 1000 : Date.now();
+  const ageMs = Date.now() - tsMs;
+
+  // When market is closed, quote is "stale" but we still return the price
+  // so strategy filters can run — this allows scanning outside market hours.
+  const status = isLive && ageMs <= MAX_AGE_MS ? "live"
+               : isLive ? "stale"
+               : "closed"; // previous close — market is closed
+
+  return {
+    ticker, price, bid, ask, timestamp: tsMs,
+    source: "finnhub", status,
+    isLivePrice: isLive,
+    marketClosed: !isLive,
+  };
+}
+
+// ─── CANDLE SERVICE ───────────────────────────────────────────────────────────
+async function fetchCandles(ticker) {
+  const from = Math.floor((Date.now() - 420 * 24 * 60 * 60 * 1000) / 1000);
+  const to   = Math.floor(Date.now() / 1000);
+  const url  = buildFinnhubUrl("/stock/candle", {
+    symbol: ticker, resolution: "D", from, to
+  });
+  let raw;
+  try {
+    const res = await fetchWithRetry(url, `candles:${ticker}`);
+    if (!res.ok) return { ok:false, error:`HTTP ${res.status}` };
+    raw = await res.json();
+  } catch (e) {
+    return { ok:false, error: e.name === "AbortError" ? "timeout" : e.message };
+  }
+
+  const count = raw?.c?.length ?? 0;
+
+  if (raw?.s !== "ok" || !Array.isArray(raw.c)) {
+    return { ok:false, error:`Finnhub returned status "${raw?.s}" for ${ticker}` };
+  }
+
+  // Need at least 200 candles for SMA200. Below that we can't compute indicators.
+  if (count < 200) {
+    return { ok:false, error:`only ${count} candles returned (need 200+)` };
+  }
+
+  return { ok:true, closes:raw.c, highs:raw.h, lows:raw.l, volumes:raw.v };
+}
+
+// ─── INDICATORS (pure functions, zero randomness) ─────────────────────────────
+function sma(arr, period) {
+  if (arr.length < period) return null;
+  return arr.slice(-period).reduce((s,v) => s+v, 0) / period;
+}
+
+function smaAt(arr, period, offset) {
+  const end = arr.length - offset;
+  if (end < period) return null;
+  return arr.slice(end - period, end).reduce((s,v) => s+v, 0) / period;
+}
+
+function isSma150Rising(closes) {
+  const cur = smaAt(closes, 150, 0);
+  const old = smaAt(closes, 150, 5);
+  return cur !== null && old !== null && cur > old;
+}
+
+function atr14(closes, highs, lows) {
+  if (closes.length < 15) return null;
+  let sum = 0;
+  for (let i = closes.length - 14; i < closes.length; i++) {
+    sum += Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
+  }
+  return sum / 14;
+}
+
+function consolidationRange(highs, lows) {
+  const hi = Math.max(...highs.slice(-20));
+  const lo = Math.min(...lows.slice(-20));
+  return ((hi - lo) / lo) * 100;
+}
+
+function isBreakout(closes, highs) {
+  return closes[closes.length-1] > Math.max(...highs.slice(-21,-1));
+}
+
+function isBounce(closes, lows, sma150v) {
+  if (!sma150v) return false;
+  return Math.min(...lows.slice(-5)) <= sma150v * 1.01
+      && closes[closes.length-1] > sma150v
+      && closes[closes.length-1] > closes[closes.length-2];
+}
+
+function hasVolConfirm(volumes) {
+  const avg = volumes.slice(-21,-1).reduce((s,v) => s+v, 0) / 20;
+  return volumes[volumes.length-1] > avg * 1.2;
+}
+
+function calcRS(closes) {
+  if (closes.length < 63) return 50;
+  const now = closes[closes.length-1];
+  const ago = closes[closes.length - Math.min(252, closes.length-1)];
+  return Math.min(99, Math.max(1, Math.round(50 + ((now-ago)/ago)*100*0.8)));
+}
+
+// ─── STRATEGY FILTERS (real data, no randomness) ──────────────────────────────
+function applyFilters(ticker, livePrice, candles) {
+  const { closes, highs, lows, volumes } = candles;
+
+  const sma150v = sma(closes, 150);
+  const sma200v = sma(closes, 200);
+  if (!sma150v || !sma200v) return null;
+
+  // Trend gate
+  let trendStatus;
+  if      (livePrice > sma150v) trendStatus = "Above SMA150";
+  else if (livePrice > sma200v) trendStatus = "Above SMA200 only";
+  else return null;
+
+  // Slope gate (only required for Above SMA150)
+  const slopeRising = isSma150Rising(closes);
+  if (trendStatus === "Above SMA150" && !slopeRising) return null;
+
+  // Setup detection
+  const rangePct     = consolidationRange(highs, lows);
+  const breakoutSig  = isBreakout(closes, highs);
+  const bounceSig    = isBounce(closes, lows, sma150v);
+
+  let setupType;
+  if      (rangePct < 8 && breakoutSig) setupType = "Breakout";
+  else if (bounceSig)                   setupType = "Bounce";
+  else return null;
+
+  // All other indicators
+  const volConfirm   = hasVolConfirm(volumes);
+  const rs           = calcRS(closes);
+  const atrVal       = atr14(closes, highs, lows);
+  const atrStop      = atrVal ? parseFloat((sma150v - atrVal * 1.5).toFixed(2)) : null;
+  const rangeFmt     = parseFloat(rangePct.toFixed(1));
+  const invalidation = parseFloat((sma150v * 0.99).toFixed(2));
+
+  const explanation = setupType === "Breakout"
+    ? `${ticker} has been consolidating within a ${rangeFmt}% range over the past 20 sessions and is pushing above its 20-day high. Volume ${volConfirm ? "confirms" : "does not confirm"} the move.`
+    : `${ticker} tested the SMA150 ($${sma150v.toFixed(2)}) within the last 5 sessions and closed back above it with a bullish candle, suggesting potential trend continuation.`;
+
+  return {
+    ticker,
+    companyName:           NAMES[ticker] || ticker + " Corp.",
+    sma150:                parseFloat(sma150v.toFixed(2)),
+    sma200:                parseFloat(sma200v.toFixed(2)),
+    sma150Slope:           slopeRising ? "Rising" : "Flat",
+    trendStatus,           setupType,
+    consolidationRangePct: rangeFmt,
+    volumeConfirmation:    volConfirm,
+    relativeStrength:      rs,
+    invalidationLevel:     invalidation,
+    atrBasedStop:          atrStop,
+    explanation,
+  };
+}
+
+// ─── SCAN BATCH ───────────────────────────────────────────────────────────────
+async function scanBatch(tickers) {
+  const results = [];
+  let dropped = 0;
+
+  for (const ticker of tickers) {
+
+    if (state.demoMode) {
+      // ── DEMO MODE ─────────────────────────────────────────────────────────
+      // Skip live quote gate. Fetch candles only and use last close as price.
+      const candles = await fetchCandles(ticker);
+      if (!candles.ok) { dropped++; continue; }
+
+      const lastClose = candles.closes[candles.closes.length - 1];
+      const candidate = applyFilters(ticker, lastClose, candles);
+      if (!candidate) continue;
+
+      results.push({
+        ...candidate,
+        currentPrice:   lastClose,
+        bid:            null,
+        ask:            null,
+        quoteStatus:    "demo",
+        quoteSource:    "candle-close",
+        quoteTimestamp: Date.now(),
+        quotedAt:       "Demo (last close)",
+      });
+
+    } else {
+      // ── LIVE MODE ─────────────────────────────────────────────────────────
+      const [quote, candles] = await Promise.all([
+        fetchLiveQuote(ticker),
+        fetchCandles(ticker),
+      ]);
+
+      // Gate 1: we need SOME price — drop only on true unavailability
+      if (quote.status === "unavailable" || !quote.price) {
+        console.warn(`[scan] DROP ${ticker} — quote: ${quote.error}`);
+        setRateLimitStatus(`Skipped ${ticker}: ${quote.error}`);
+        dropped++; continue;
+      }
+
+      // Gate 2: candle history required
+      if (!candles.ok) {
+        console.warn(`[scan] DROP ${ticker} — candles: ${candles.error}`);
+        setRateLimitStatus(`Skipped ${ticker}: ${candles.error}`);
+        dropped++; continue;
+      }
+
+      // Gate 3: strategy filters
+      const candidate = applyFilters(ticker, quote.price, candles);
+      if (!candidate) continue;
+
+      const quotedAt = quote.marketClosed
+        ? "Previous close (market closed)"
+        : new Date(quote.timestamp).toLocaleTimeString();
+
+      results.push({
+        ...candidate,
+        currentPrice:   quote.price,
+        bid:            quote.bid,
+        ask:            quote.ask,
+        quoteStatus:    quote.status,       // "live" | "stale" | "closed"
+        quoteSource:    "finnhub",
+        quoteTimestamp: quote.timestamp,
+        quotedAt,
+        marketClosed:   quote.marketClosed,
+      });
+    }
+  }
+
+  return { results, dropped };
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const state = {
+  selectedSectors: ["Technology","Healthcare","Financials"],
+  results: [], totalDropped: 0,
+  filterSetup: "All", sortBy: "rs",
+  isScanning: false, stopRequested: false,
+  demoMode: false,
+};
+
+// ─── DOM ──────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const el = {
+  scanBtn:    $("scan-btn"),
+  demoBtn:    $("demo-btn"),
+  demoBanner: $("demo-banner"),
+  results:    $("results"),
+  statsRow:   $("stats-row"),
+  progWrap:   $("prog-wrap"),
+  progFill:   $("prog-fill"),
+  progLabel:  $("prog-label"),
+  progPct:    $("prog-pct"),
+  progMsg:    $("prog-msg"),
+  empty:      $("empty"),
+  errBox:     $("err-box"),
+};
+
+// Demo mode toggle
+el.demoBtn.addEventListener("click", () => {
+  state.demoMode = !state.demoMode;
+  el.demoBtn.textContent = `◎ Demo Mode: ${state.demoMode ? "On" : "Off"}`;
+  el.demoBtn.classList.toggle("on", state.demoMode);
+  el.demoBanner.classList.toggle("visible", state.demoMode);
+});
+
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function buildSectors() {
+  const container = $("sector-buttons");
+  Object.entries(SECTORS).forEach(([name, tickers]) => {
+    const btn = document.createElement("button");
+    btn.className = "sector-btn" + (state.selectedSectors.includes(name) ? " on" : "");
+    btn.innerHTML = `<span>${name}</span><span class="cnt">${tickers.length}</span>`;
+    btn.addEventListener("click", () => {
+      state.selectedSectors = state.selectedSectors.includes(name)
+        ? state.selectedSectors.filter(s => s !== name)
+        : [...state.selectedSectors, name];
+      btn.classList.toggle("on", state.selectedSectors.includes(name));
+      $("ticker-count").textContent = getSelectedTickers().length + " tickers selected";
+    });
+    container.appendChild(btn);
+  });
+  $("ticker-count").textContent = getSelectedTickers().length + " tickers selected";
+}
+
+function getSelectedTickers() {
+  return [...new Set(state.selectedSectors.flatMap(s => SECTORS[s] || []))];
+}
+
+// ─── FILTER + SORT ────────────────────────────────────────────────────────────
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    state.filterSetup = btn.dataset.filter;
+    renderResults();
+  });
+});
+$("sort-select").addEventListener("change", e => { state.sortBy = e.target.value; renderResults(); });
+
+// ─── SCAN ─────────────────────────────────────────────────────────────────────
+el.scanBtn.addEventListener("click", () => {
+  if (state.isScanning) { state.stopRequested = true; return; }
+  startScan();
+});
+
+async function startScan() {
+  const tickers = getSelectedTickers();
+  if (!tickers.length) { showError("Please select at least one sector."); return; }
+
+  state.results = []; state.totalDropped = 0;
+  state.isScanning = true; state.stopRequested = false;
+  rateLimitHits = 0; // reset for new scan
+
+  el.scanBtn.textContent = "⬛ Stop Scan";
+  el.scanBtn.classList.add("stop");
+  el.empty.classList.add("hidden");
+  el.errBox.classList.add("hidden");
+  el.statsRow.classList.add("hidden");
+  el.progWrap.classList.remove("hidden");
+  el.results.innerHTML = "";
+  setProgress(0, "Starting…");
+
+  // Split into batches
+  const batches = [];
+  for (let i = 0; i < tickers.length; i += BATCH_SIZE)
+    batches.push(tickers.slice(i, i + BATCH_SIZE));
+
+  for (let i = 0; i < batches.length; i++) {
+    if (state.stopRequested) break;
+    setProgress(
+      Math.round(i / batches.length * 100),
+      `Batch ${i+1}/${batches.length}: ${batches[i].join(", ")}`
+    );
+    try {
+      const { results, dropped } = await scanBatch(batches[i]);
+      state.results      = [...state.results, ...results];
+      state.totalDropped += dropped;
+      renderResults();
+    } catch(err) {
+      showError("Error: " + err.message);
+    }
+    // small pause between batches to stay under rate limit
+    if (i < batches.length - 1) await new Promise(r => setTimeout(r, 1100));
+  }
+
+  setProgress(100, "Scan complete.");
+  state.isScanning = false;
+  el.scanBtn.textContent = "▶ Run Scan";
+  el.scanBtn.classList.remove("stop");
+
+  if (state.results.length === 0 && !state.stopRequested) {
+    el.empty.classList.remove("hidden");
+    el.empty.querySelector("p").textContent = "No qualifying setups found.";
+    el.empty.querySelector("small").textContent = "This may indicate the market is closed or no stocks met all criteria. Live pricing is required — signals are not generated from delayed data.";
+  }
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderResults() {
+  let list = state.results.filter(r => state.filterSetup === "All" || r.setupType === state.filterSetup);
+  list.sort((a,b) => {
+    if (state.sortBy === "rs")    return b.relativeStrength - a.relativeStrength;
+    if (state.sortBy === "price") return b.currentPrice - a.currentPrice;
+    if (state.sortBy === "range") return a.consolidationRangePct - b.consolidationRangePct;
+    return 0;
+  });
+
+  $("s-total").textContent    = state.results.length;
+  $("s-breakout").textContent = state.results.filter(r=>r.setupType==="Breakout").length;
+  $("s-bounce").textContent   = state.results.filter(r=>r.setupType==="Bounce").length;
+  $("s-live").textContent     = state.results.length;
+  $("s-dropped").textContent  = state.totalDropped;
+  $("s-ratelimit").textContent = rateLimitHits;
+  // Turn rate limit counter orange if it fired at least once
+  $("s-ratelimit").style.color = rateLimitHits > 0 ? "#f5a623" : "#888";
+  el.statsRow.classList.toggle("hidden", state.results.length === 0 && state.totalDropped === 0);
+  el.results.innerHTML = list.map(s => buildCard(s, false)).join("");
+  updateWlBadge();
+}
+
+function buildCard(s, isWatchlist = false) {
+  const pct150  = ((s.currentPrice - s.sma150) / s.sma150 * 100).toFixed(1);
+  const pct200  = ((s.currentPrice - s.sma200) / s.sma200 * 100).toFixed(1);
+  const setup   = s.setupType.toLowerCase();
+  const TREND   = {
+    "Above SMA150":      ["#0ff294","rgba(15,242,148,.08)","rgba(15,242,148,.3)"],
+    "Above SMA200 only": ["#f5a623","rgba(245,166,35,.08)","rgba(245,166,35,.3)"],
+    "Warning":           ["#ff4757","rgba(255,71,87,.08)", "rgba(255,71,87,.3)"],
+  };
+  const [tc,tbg,tbr] = TREND[s.trendStatus] || TREND["Warning"];
+  const rsColor    = s.relativeStrength>=80?"#0ff294":s.relativeStrength>=60?"#f5a623":"#ff4757";
+  const slopeColor = s.sma150Slope==="Rising"?"#0ff294":"#ff4757";
+  const volColor   = s.volumeConfirmation?"#0ff294":"#555";
+  const spread     = (s.bid&&s.ask)?`$${s.bid.toFixed(2)} / $${s.ask.toFixed(2)}`:"—";
+  const quotePill = s.quoteStatus === "demo"
+    ? `<span class="q-pill" style="color:#a164ff;background:rgba(161,100,255,.1);border-color:rgba(161,100,255,.35)">◎ DEMO</span>
+       <span class="q-meta">Last candle close — not a live quote</span>`
+    : s.quoteStatus === "closed" || s.marketClosed
+    ? `<span class="q-pill" style="color:#f5a623;background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.35)">◌ MARKET CLOSED</span>
+       <span class="q-meta">Previous close · Finnhub · ${s.quotedAt || "—"}</span>`
+    : s.quoteStatus === "stale"
+    ? `<span class="q-pill" style="color:#f5a623;background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.35)">◌ STALE</span>
+       <span class="q-meta">Finnhub · ${s.quotedAt || "—"}</span>`
+    : `<span class="q-pill">● LIVE QUOTE</span>
+       <span class="q-meta">Finnhub · as of ${s.quotedAt || "—"}</span>`;
+
+  // Safe JSON embed — avoid single-quote conflicts in HTML attributes
+  const stockJson    = isWatchlist ? "" : encodeURIComponent(JSON.stringify(s));
+  const alreadySaved = !isWatchlist && wlHas(s.ticker);
+
+  const actionBtn = isWatchlist
+    ? `<button class="remove-wl-btn" data-ticker="${s.ticker}">✕ Remove</button>`
+    : `<button class="add-wl-btn ${alreadySaved?"saved":""}"
+         data-ticker="${s.ticker}"
+         data-stock="${stockJson}">
+         ${alreadySaved ? "★ Saved" : "☆ Add to Watchlist"}
+       </button>`;
+
+  const savedLine = (isWatchlist && s.savedAt)
+    ? `<div style="font-size:10px;color:#2a2a40;margin-top:4px">Saved ${s.savedAt}</div>`
+    : "";
+
+  return `
+  <div class="card ${setup}" data-ticker="${s.ticker}">
+
+    <div class="q-banner">
+      <div style="display:flex;align-items:center;gap:7px">
+        ${quotePill}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="q-meta">Bid / Ask: <span style="color:#555">${spread}</span></span>
+        ${actionBtn}
+      </div>
+    </div>
+
+    <!-- Always-visible header on mobile: ticker + price + setup badge + expand arrow -->
+    <div class="card-header-mobile" data-accordion="${s.ticker}">
+      <div class="left">
+        <div>
+          <div class="ticker-name">${s.ticker}</div>
+          <div class="company-name">${s.companyName}${savedLine}</div>
+        </div>
+        <div>
+          <div class="price-val">$${s.currentPrice.toFixed(2)}</div>
+          <div class="price-lbl">Live Price</div>
+        </div>
+        <span class="setup-badge ${setup}">${s.setupType.toUpperCase()}</span>
+      </div>
+      <span class="card-expand-arrow" id="arrow-${s.ticker}">▼</span>
+    </div>
+
+    <!-- Collapsible on mobile, always open on desktop -->
+    <div class="card-details" id="details-${s.ticker}">
+      <div class="card-row">
+        <div style="min-width:145px">
+          <div class="ma-line">SMA150: <span style="color:${tc}">$${s.sma150.toFixed(2)}</span> <span style="color:#444">(${pct150>0?"+":""}${pct150}%)</span></div>
+          <div class="ma-line">SMA200: <span style="color:#666">$${s.sma200.toFixed(2)}</span> <span style="color:#444">(+${pct200}%)</span></div>
+          <div style="font-size:10px;color:#444;margin-top:2px">Slope: <span style="color:${slopeColor}">${s.sma150Slope}</span></div>
+        </div>
+        <div style="min-width:105px">
+          <div class="card-meta">Consolidation Range: ${s.consolidationRangePct.toFixed(1)}%</div>
+          <div class="card-meta">Volume Confirmation: <span style="color:${volColor}">${s.volumeConfirmation?"✓ Yes":"— No"}</span></div>
+        </div>
+        <div style="min-width:105px">
+          <div class="rs-block">RS Rating: <span class="rs-value" style="color:${rsColor}">${s.relativeStrength}</span></div>
+          <div class="card-meta" style="margin-top:5px">Invalidation Level: <span style="color:#ff4757">$${s.invalidationLevel.toFixed(2)}</span></div>
+          <div class="card-meta">ATR-Based Stop: <span style="color:rgba(255,71,87,.6)">${s.atrBasedStop?`$${s.atrBasedStop.toFixed(2)}`:"—"}</span></div>
+        </div>
+        <div style="margin-left:auto;align-self:flex-start">
+          <span class="trend-badge" style="color:${tc};background:${tbg};border:1px solid ${tbr}">
+            ${ s.trendStatus === "Above SMA150"      ? "ABOVE SMA150"
+             : s.trendStatus === "Above SMA200 only" ? "ABOVE SMA200 ONLY"
+             : "SETUP INVALIDATED" }
+          </span>
+        </div>
+      </div>
+      <div class="card-expl">▸ ${s.explanation}</div>
+      <button class="chart-toggle-btn" data-ticker="${s.ticker}">
+        ▾ Show Chart — ${s.ticker} · SMA150 · SMA200
+      </button>
+      <div class="chart-container" id="chart-${s.ticker}"></div>
+    </div>
+
+  </div>`;
+}
+
+// ─── SIDEBAR TOGGLE (mobile) ──────────────────────────────────────────────────
+document.getElementById("sidebar-toggle").addEventListener("click", () => {
+  const sidebar = document.getElementById("sidebar");
+  const arrow   = document.getElementById("sidebar-arrow");
+  const isOpen  = sidebar.classList.toggle("mobile-open");
+  arrow.classList.toggle("open", isOpen);
+  document.getElementById("sidebar-toggle").textContent = "";
+  document.getElementById("sidebar-toggle").innerHTML =
+    `${isOpen ? "✕ Close" : "☰ Filters & Sectors"} <span class="toggle-arrow ${isOpen?"open":""}" id="sidebar-arrow">▼</span>`;
+});
+
+// ─── CARD CLICK DELEGATION ────────────────────────────────────────────────────
+document.addEventListener("click", e => {
+  // Add to Watchlist
+  const addBtn = e.target.closest(".add-wl-btn");
+  if (addBtn && !addBtn.classList.contains("saved")) {
+    try {
+      const stock = JSON.parse(decodeURIComponent(addBtn.dataset.stock));
+      wlAdd(stock);
+      addBtn.textContent = "★ Saved";
+      addBtn.classList.add("saved");
+    } catch(err) { console.error("WL add error:", err); }
+    return;
+  }
+  // Remove from Watchlist
+  const removeBtn = e.target.closest(".remove-wl-btn");
+  if (removeBtn) {
+    wlRemove(removeBtn.dataset.ticker);
+    renderResults();
+    return;
+  }
+  // Card accordion (mobile only — desktop CSS overrides to always-open)
+  const accordionHeader = e.target.closest(".card-header-mobile");
+  if (accordionHeader) {
+    const ticker  = accordionHeader.dataset.accordion;
+    const details = document.getElementById(`details-${ticker}`);
+    const arrow   = document.getElementById(`arrow-${ticker}`);
+    if (details) {
+      details.classList.toggle("open");
+      if (arrow) arrow.classList.toggle("open", details.classList.contains("open"));
+    }
+    return;
+  }
+  // Chart toggle
+  const chartBtn = e.target.closest(".chart-toggle-btn");
+  if (chartBtn) {
+    const ticker    = chartBtn.dataset.ticker;
+    const container = document.getElementById(`chart-${ticker}`);
+    if (!container) return;
+
+    const isOpen = container.classList.toggle("open");
+    chartBtn.classList.toggle("open", isOpen);
+    chartBtn.textContent = isOpen
+      ? `▴ Hide Chart — ${ticker} · SMA150 · SMA200`
+      : `▾ Show Chart — ${ticker} · SMA150 · SMA200`;
+
+    if (isOpen && !container.dataset.loaded) {
+      container.dataset.loaded = "1";
+      injectTradingViewWidget(ticker, container);
+    }
+  }
+});
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function setProgress(pct, msg) {
+  el.progFill.style.width  = pct + "%";
+  el.progPct.textContent   = pct + "%";
+  el.progLabel.textContent = pct < 100 ? "Scanning…" : "Done";
+  el.progMsg.textContent   = msg || "";
+}
+function showError(msg) {
+  el.errBox.textContent = msg;
+  el.errBox.classList.remove("hidden");
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(`tab-${target}`).classList.add("active");
+    if (target === "watchlist") renderWatchlist();
+  });
+});
+
+// ─── WATCHLIST (localStorage) ─────────────────────────────────────────────────
+const WL_KEY = "micha_watchlist_v1";
+
+function wlLoad() {
+  try { return JSON.parse(localStorage.getItem(WL_KEY) || "[]"); }
+  catch { return []; }
+}
+
+function wlSave(list) {
+  localStorage.setItem(WL_KEY, JSON.stringify(list));
+  updateWlBadge();
+}
+
+function wlAdd(stock) {
+  const list = wlLoad();
+  if (list.find(s => s.ticker === stock.ticker)) return; // already saved
+  list.unshift({ ...stock, savedAt: new Date().toLocaleString() });
+  wlSave(list);
+}
+
+function wlRemove(ticker) {
+  wlSave(wlLoad().filter(s => s.ticker !== ticker));
+  renderWatchlist();
+}
+
+function wlHas(ticker) {
+  return wlLoad().some(s => s.ticker === ticker);
+}
+
+function updateWlBadge() {
+  const count = wlLoad().length;
+  const badge = document.getElementById("wl-count");
+  if (badge) badge.textContent = count;
+}
+
+function renderWatchlist() {
+  const list    = wlLoad();
+  const empty   = document.getElementById("wl-empty");
+  const content = document.getElementById("wl-content");
+  const wlList  = document.getElementById("wl-list");
+
+  if (!list.length) {
+    empty.classList.remove("hidden");
+    content.classList.add("hidden");
+    return;
+  }
+
+  empty.classList.add("hidden");
+  content.classList.remove("hidden");
+  wlList.innerHTML = list.map(s => buildCard(s, true)).join("");
+}
+
+// Clear all
+document.getElementById("wl-clear-btn").addEventListener("click", () => {
+  if (!confirm("Clear all watchlist entries?")) return;
+  wlSave([]);
+  renderWatchlist();
+});
+
+// ─── TRADINGVIEW CHART EMBED ──────────────────────────────────────────────────
+// Uses TradingView's free embeddable widget.
+// Injects an iframe with the Advanced Chart, MA150, and MA200 pre-loaded.
+// No account or API key needed — fully public.
+// Each chart is injected only once (on first open) and stays alive in the DOM.
+
+function injectTradingViewWidget(ticker, container) {
+  // Unique container ID required by TradingView widget
+  const uid = `tv_${ticker}_${Date.now()}`;
+
+  // Widget config — see https://www.tradingview.com/widget/advanced-chart/
+  const config = {
+    autosize:          true,
+    symbol:            ticker,
+    interval:          "D",           // Daily candles
+    timezone:          "America/New_York",
+    theme:             "dark",
+    style:             "1",           // Candlestick
+    locale:            "en",
+    backgroundColor:   "#09090f",
+    gridColor:         "#1a1a28",
+    hide_top_toolbar:  false,
+    hide_legend:       false,
+    save_image:        false,
+    container_id:      uid,
+    studies: [
+      // SMA 150 in green
+      {
+        id:     "MASimple@tv-basicstudies",
+        inputs: { length: 150 },
+        override: { "Plot.color": "#0ff294", "Plot.linewidth": 2 }
+      },
+      // SMA 200 in orange
+      {
+        id:     "MASimple@tv-basicstudies",
+        inputs: { length: 200 },
+        override: { "Plot.color": "#f5a623", "Plot.linewidth": 2 }
+      },
+    ],
+  };
+
+  // Height wrapper
+  container.style.height = "460px";
+
+  // Div that TradingView mounts into
+  const mount = document.createElement("div");
+  mount.id = uid;
+  mount.style.height = "100%";
+  container.appendChild(mount);
+
+  // Load TradingView script once, then init widget
+  if (window.TradingView) {
+    new window.TradingView.widget(config);
+  } else {
+    const script = document.createElement("script");
+    script.src   = "https://s3.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = () => new window.TradingView.widget(config);
+    document.head.appendChild(script);
+  }
+}
+
+// ─── MARKET HOURS GUARD ───────────────────────────────────────────────────────
+// US market hours: Mon–Fri, 09:30–16:00 Eastern Time.
+// Pre-market:      Mon–Fri, 04:00–09:30 ET  (quotes exist but may be thin)
+// After-hours:     Mon–Fri, 16:00–20:00 ET
+// Closed:          weekends + outside all windows above
+//
+// We use Intl.DateTimeFormat to get the current time in America/New_York
+// without any external library. Works in all modern browsers.
+
+const US_HOLIDAYS_2025_2026 = [
+  // 2025
+  "2025-01-01","2025-01-20","2025-02-17","2025-04-18",
+  "2025-05-26","2025-06-19","2025-07-04","2025-09-01",
+  "2025-11-27","2025-12-25",
+  // 2026
+  "2026-01-01","2026-01-19","2026-02-16","2026-04-03",
+  "2026-05-25","2026-06-19","2026-07-03","2026-09-07",
+  "2026-11-26","2026-12-25",
+];
+
+function getMarketStatus() {
+  // Get current time in ET
+  const fmt    = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric", minute: "numeric", second: "numeric",
+    hour12: false, weekday: "short",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  });
+  const parts  = Object.fromEntries(fmt.formatToParts(new Date()).map(p => [p.type, p.value]));
+  const dow    = parts.weekday;               // "Mon", "Tue", …
+  const dateStr = `${parts.year}-${parts.month}-${parts.day}`; // "2026-05-17"
+  const h      = parseInt(parts.hour, 10);
+  const m      = parseInt(parts.minute, 10);
+  const mins   = h * 60 + m;                 // minutes since midnight ET
+
+  const isWeekend = dow === "Sat" || dow === "Sun";
+  const isHoliday = US_HOLIDAYS_2025_2026.includes(dateStr);
+
+  if (isWeekend || isHoliday) {
+    return {
+      status:  "closed",
+      label:   isHoliday ? "Market Closed — Public Holiday" : "Market Closed — Weekend",
+      detail:  "Quotes will reflect the most recent closing price. Signals generated outside market hours are for reference only.",
+      etTime:  `${parts.hour}:${parts.minute} ET`,
+    };
+  }
+
+  const OPEN       = 9 * 60 + 30;   // 09:30
+  const CLOSE      = 16 * 60;        // 16:00
+  const PRE_START  = 4  * 60;        // 04:00
+  const POST_END   = 20 * 60;        // 20:00
+
+  if (mins >= OPEN && mins < CLOSE) {
+    return {
+      status:  "open",
+      label:   "Market Open",
+      detail:  `Regular session · closes at 16:00 ET · ${parts.hour}:${parts.minute} ET now`,
+      etTime:  `${parts.hour}:${parts.minute} ET`,
+    };
+  }
+  if (mins >= PRE_START && mins < OPEN) {
+    return {
+      status:  "pre",
+      label:   "Pre-Market Session",
+      detail:  `04:00–09:30 ET · Regular session opens at 09:30 ET · ${parts.hour}:${parts.minute} ET now`,
+      etTime:  `${parts.hour}:${parts.minute} ET`,
+    };
+  }
+  if (mins >= CLOSE && mins < POST_END) {
+    return {
+      status:  "closed",
+      label:   "After-Hours Session",
+      detail:  `Regular session closed at 16:00 ET. Quotes will reflect the closing price. ${parts.hour}:${parts.minute} ET now`,
+      etTime:  `${parts.hour}:${parts.minute} ET`,
+    };
+  }
+  return {
+    status:  "closed",
+    label:   "Market Closed",
+    detail:  `Outside all trading sessions. Quotes will reflect the most recent closing price. ${parts.hour}:${parts.minute} ET now`,
+    etTime:  `${parts.hour}:${parts.minute} ET`,
+  };
+}
+
+function renderMarketBanner() {
+  const mkt    = getMarketStatus();
+  const banner = document.getElementById("market-banner");
+  banner.className = `market-banner ${mkt.status}`;  // closed | open | pre
+  banner.id    = "market-banner";                    // keep id
+  banner.innerHTML = `
+    <div>
+      <span class="mkt-dot ${mkt.status}"></span>
+      <strong>${mkt.label}</strong>
+      <span style="margin-left:10px;opacity:.7">${mkt.detail}</span>
+    </div>
+    <div style="opacity:.5;font-size:10px;letter-spacing:1px">NYSE · NASDAQ · ${mkt.etTime}</div>
+  `;
+
+  // Also update the scan button label when market is closed
+  if (mkt.status === "closed") {
+    el.scanBtn.title = "Market is closed. Results will use last closing prices — live quote gate will exclude stocks with zero price.";
+  }
+}
+
+// Refresh banner every 30 seconds so it updates if the session opens/closes
+// while the page is open
+setInterval(renderMarketBanner, 30_000);
+
+// ─── MARKET REGIME INDICATOR (SPY) ───────────────────────────────────────────
+// Fetches SPY candles and computes:
+//   SMA150, SMA50, current price vs both MAs, slope of SMA150
+//
+// Regime classification:
+//   BULL    — SPY above SMA150 AND SMA150 slope rising
+//   CAUTION — SPY above SMA150 but slope flat/declining, OR between SMA50/SMA150
+//   BEAR    — SPY below SMA150
+//
+// Shown in a persistent bar above the market hours banner.
+// Refreshes every 5 minutes automatically.
+
+async function fetchSpyRegime() {
+  setPillState("loading", "Loading SPY…");
+
+  const candles = await fetchCandles("SPY");
+  if (!candles.ok) {
+    setPillState("caution", "SPY data unavailable");
+    document.getElementById("regime-stats").innerHTML = "";
+    return;
+  }
+
+  const { closes, highs, lows } = candles;
+
+  const price   = closes[closes.length - 1];
+  const sma150v = sma(closes, 150);
+  const sma50v  = sma(closes, 50);
+
+  if (!sma150v || !sma50v) {
+    setPillState("caution", "Insufficient SPY history");
+    return;
+  }
+
+  const slopeRising  = isSma150Rising(closes);
+  const aboveSma150  = price > sma150v;
+  const aboveSma50   = price > sma50v;
+
+  // Percentage distances
+  const pct150 = ((price - sma150v) / sma150v * 100).toFixed(1);
+  const pct50  = ((price - sma50v)  / sma50v  * 100).toFixed(1);
+
+  // Classify regime
+  let regime, label;
+  if (aboveSma150 && slopeRising) {
+    regime = "bull";
+    label  = "BULL — Trend favors long setups";
+  } else if (aboveSma150 && !slopeRising) {
+    regime = "caution";
+    label  = "CAUTION — Above SMA150 but slope weakening";
+  } else if (!aboveSma150 && price > sma150v * 0.97) {
+    regime = "caution";
+    label  = "CAUTION — Testing SMA150 support";
+  } else {
+    regime = "bear";
+    label  = "BEAR — SPY below SMA150, avoid new longs";
+  }
+
+  setPillState(regime, label);
+
+  // Stats row
+  const sign150 = pct150 >= 0 ? "+" : "";
+  const sign50  = pct50  >= 0 ? "+" : "";
+  document.getElementById("regime-stats").innerHTML = `
+    <div class="regime-stat">SPY <span>$${price.toFixed(2)}</span></div>
+    <div class="regime-stat">SMA150 <span style="color:${aboveSma150?"#0ff294":"#ff4757"}">$${sma150v.toFixed(2)} (${sign150}${pct150}%)</span></div>
+    <div class="regime-stat">SMA50 <span style="color:${aboveSma50?"#0ff294":"#ff4757"}">$${sma50v.toFixed(2)} (${sign50}${pct50}%)</span></div>
+    <div class="regime-stat">SMA150 Slope <span style="color:${slopeRising?"#0ff294":"#f5a623"}">${slopeRising?"Rising ↑":"Flat / Declining ↓"}</span></div>
+  `;
+}
+
+function setPillState(regime, text) {
+  const pill = document.getElementById("regime-pill");
+  const dot  = document.getElementById("regime-dot");
+  const txt  = document.getElementById("regime-text");
+  pill.className = `regime-pill ${regime}`;
+  dot.className  = `regime-dot ${regime}`;
+  txt.textContent = text;
+}
+
+// Refresh every 5 minutes
+setInterval(fetchSpyRegime, 5 * 60 * 1000);
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+buildSectors();
+renderMarketBanner();
+updateWlBadge();
+fetchSpyRegime();
+</script>
+</body>
+</html>
